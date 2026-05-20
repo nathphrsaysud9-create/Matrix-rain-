@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Matrix Rain</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;font-family:monospace;}
+canvas{display:block;width:100vw;height:100vh;}
+#ctrl{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);display:flex;gap:8px;justify-content:center;flex-wrap:wrap;z-index:10;}
+button{background:rgba(0,40,0,0.8);color:#00ff41;border:1px solid #00ff41;padding:6px 16px;font-family:monospace;font-size:13px;border-radius:4px;cursor:pointer;}
+button:hover{background:#00ff41;color:#000;}
+button.active{background:#00ff41;color:#000;}
+label{color:#00ff41;font-family:monospace;font-size:13px;display:flex;align-items:center;gap:6px;background:rgba(0,40,0,0.8);padding:5px 10px;border:1px solid #00ff41;border-radius:4px;}
+input[type=range]{accent-color:#00ff41;width:80px;}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="ctrl">
+  <button id="btnToggle" class="active">Pause</button>
+  <label>Speed<input type="range" id="spd" min="1" max="10" value="5" step="1"></label>
+  <label>Density<input type="range" id="dens" min="1" max="5" value="3" step="1"></label>
+  <button id="btnColor">🎨 Color</button>
+</div>
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const colors = ['green','cyan','amber','purple'];
+let colorIdx = 0;
+const palettes = {
+  green:{head:'#ffffff',bright:'#00ff41',mid:'#00dd33',dim:'#007718',trail:'rgba(0,0,0,0.05)'},
+  cyan:{head:'#ffffff',bright:'#00ffff',mid:'#00ccdd',dim:'#006688',trail:'rgba(0,0,5,0.05)'},
+  amber:{head:'#ffffff',bright:'#ffcc00',mid:'#dd9900',dim:'#774400',trail:'rgba(0,0,0,0.05)'},
+  purple:{head:'#ffffff',bright:'#cc77ff',mid:'#9933ff',dim:'#440088',trail:'rgba(0,0,0,0.05)'},
+};
+let pal = palettes.green;
+const chars = 'アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲンABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%^&*()[]{}|<>/\\';
+let W,H,cols,drops,speeds,lengths,brightens;
+let fontSize=16;
+let running=true;
+let frameCount=0;
+
+function getSpeed(){return 11-parseInt(document.getElementById('spd').value);}
+function getDensMulti(){return parseInt(document.getElementById('dens').value);}
+
+function init(){
+  W=canvas.width=window.innerWidth;
+  H=canvas.height=window.innerHeight;
+  fontSize=Math.max(12,Math.floor(W/55));
+  cols=Math.floor(W/fontSize);
+  drops=[];speeds=[];lengths=[];brightens=[];
+  for(let i=0;i<cols;i++){
+    drops[i]=-Math.random()*80;
+    speeds[i]=0.4+Math.random()*0.6;
+    lengths[i]=10+Math.floor(Math.random()*25);
+    brightens[i]=Math.floor(Math.random()*lengths[i]);
+  }
+}
+
+function draw(){
+  if(!running) return;
+  frameCount++;
+  if(frameCount%getSpeed()!==0) return;
+  ctx.fillStyle=pal.trail;
+  ctx.fillRect(0,0,W,H);
+  ctx.font=`bold ${fontSize}px monospace`;
+  const densMulti=getDensMulti();
+  for(let i=0;i<cols;i++){
+    if(Math.random()<0.001*densMulti && drops[i]<0) drops[i]=0;
+    const y=Math.floor(drops[i]);
+    for(let j=0;j<lengths[i];j++){
+      const row=y-j;
+      if(row<0||row>Math.floor(H/fontSize)) continue;
+      const ch=chars[Math.floor(Math.random()*chars.length)];
+      if(j===0){
+        ctx.fillStyle=pal.head;ctx.shadowColor=pal.bright;ctx.shadowBlur=10;
+      } else if(j===1){
+        ctx.fillStyle=pal.bright;ctx.shadowColor=pal.bright;ctx.shadowBlur=8;
+      } else if(j<brightens[i]){
+        ctx.fillStyle=pal.mid;ctx.shadowBlur=0;
+      } else {
+        const fade=1-(j-brightens[i])/(lengths[i]-brightens[i]);
+        ctx.shadowBlur=0;ctx.fillStyle=pal.dim;ctx.globalAlpha=Math.max(0.1,fade);
+      }
+      ctx.fillText(ch,i*fontSize,row*fontSize);
+      ctx.globalAlpha=1;ctx.shadowBlur=0;
+    }
+    drops[i]+=speeds[i];
+    if(drops[i]*fontSize>H+lengths[i]*fontSize){
+      drops[i]=-Math.random()*40;
+      speeds[i]=0.4+Math.random()*0.6;
+      lengths[i]=10+Math.floor(Math.random()*25);
+    }
+  }
+}
+
+init();
+setInterval(draw,16);
+
+document.getElementById('btnToggle').addEventListener('click',function(){
+  running=!running;
+  this.textContent=running?'Pause':'Play';
+  running?this.classList.add('active'):this.classList.remove('active');
+});
+
+document.getElementById('btnColor').addEventListener('click',function(){
+  colorIdx=(colorIdx+1)%colors.length;
+  const name=colors[colorIdx];
+  pal=palettes[name];
+  this.textContent='🎨 '+name.charAt(0).toUpperCase()+name.slice(1);
+  ctx.clearRect(0,0,W,H);
+});
+
+window.addEventListener('resize',()=>{init();ctx.clearRect(0,0,W,H);});
+</script>
+</body>
+</html>
